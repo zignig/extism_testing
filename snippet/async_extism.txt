@@ -1,0 +1,68 @@
+// Google says 
+
+
+use extism::{Manifest, Plugin, Wasm};
+use std::sync::Arc;
+
+// Simulate an asynchronous worker pulling data or listening to a socket
+async fn async_event_listener(plugin_runner: Arc<PluginRunner>, task_id: usize) {
+    println!("[Task {}] Async listener simulated task started...", task_id);
+    
+    // We execute the synchronous Extism plugin inside `spawn_blocking`
+    // This offloads the CPU-heavy WASM calculation away from the Tokio executor threads
+    let result = tokio::task::spawn_blocking(move || {
+        plugin_runner.run_plugin("Hello from Tokio Async!")
+    })
+    .await
+    .unwrap();
+
+    match result {
+        Ok(output) => println!("[Task {}] Plugin response: {}", task_id, output),
+        Err(e) => eprintln!("[Task {}] Plugin error: {:?}", task_id, e),
+    }
+}
+
+struct PluginRunner {
+    // We encapsulate the Manifest or binary bytes to instantiate plugins on the fly 
+    // inside the blocking thread since Extism `Plugin` instances are not safely `Send` across threads.
+    manifest: Manifest,
+}
+
+impl PluginRunner {
+    fn new(wasm_url_or_path: &str) -> Self {
+        let wasm = Wasm::file(wasm_url_or_path);
+        let manifest = Manifest::new([wasm]);
+        Self { manifest }
+    }
+
+    fn run_plugin(&self, input: &str) -> Result<String, extism::Error> {
+        // Instantiate the plugin inside the worker thread execution context
+        let mut plugin = Plugin::new(&self.manifest, [], true)?;
+        let res = plugin.call::<&str, &str>("count_vowels", input)?;
+        Ok(res.to_string())
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    // 1. Initialize our runner with a compiled Extism WASM plugin 
+    // (e.g., the standard "count_vowels" example plugin from Extism docs)
+    let runner = Arc::new(PluginRunner::new("code.wasm"));
+
+    println!("Starting concurrent async plugin workers...");
+
+    // 2. Spawn multiple asynchronous tasks concurrently using Tokio
+    let mut handles = vec![];
+    for i in 1..=3 {
+        let runner_clone = Arc::clone(&runner);
+        let handle = tokio::spawn(async_event_listener(runner_clone, i));
+        handles.push(handle);
+    }
+
+    // 3. Await all the background Tokio tasks to complete
+    for handle in handles {
+        let _ = handle.await;
+    }
+    
+    println!("All async tasks completed successfully.");
+}
