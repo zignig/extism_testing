@@ -45,7 +45,7 @@ pub fn count_vowels(input: String) -> FnResult<Json<VowelReport>> {
     store_total(total);
 
     let output = VowelReport {
-        header: "Counter test".to_string(),
+        header: "Update".to_string(),
         count,
         total,
         vowels,

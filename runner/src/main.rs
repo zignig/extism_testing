@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     let storage = Storage::new(PathBuf::from_str("data")?).await?;
     // println!("{:#?}",&storage);
     let _ = storage.list_tags().await;
-    storage.install("./dist/plugin.wasm").await?;
+    // storage.install("./dist/plugin.wasm").await?;
 
 
     let runner = Arc::new(PluginRunner::new("dist/plugin.wasm"));
