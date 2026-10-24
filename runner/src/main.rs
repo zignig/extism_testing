@@ -1,10 +1,14 @@
-use std::{sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use anyhow::Result;
 use clap::Parser;
 
 mod wasm_runner;
 use wasm_runner::PluginRunner;
+
+mod storage;
+use storage::Storage;
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -23,8 +27,18 @@ async fn main() -> Result<()> {
         "aeiou"
     };
 
+    let storage = Storage::new(PathBuf::from_str("data")?).await?;
+    // println!("{:#?}",&storage);
+    let _ = storage.list_tags().await;
+    storage.install("./dist/plugin.wasm").await?;
+
+
     let runner = Arc::new(PluginRunner::new("dist/plugin.wasm"));
     let res = runner.run_plugin(input);
     println!("{:#?}", &res);
+
+
+    tokio::signal::ctrl_c().await?;
     Ok(())
 }
+
