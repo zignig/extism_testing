@@ -21,7 +21,7 @@ fn main() {
             "--package",
             "plugin",
             "--target",
-            "wasm32-unknown-unknown",
+            "wasm32-wasip3",
             "--release",
         ])
         .status()

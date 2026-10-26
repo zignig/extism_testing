@@ -4,3 +4,11 @@
 2. uploader
 3. runner
 
+# Installation 
+
+The wasip3 target 
+
+`
+rustup target add wasm32-wasip3
+`
+

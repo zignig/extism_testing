@@ -4,6 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 
 mod wasm_runner;
+use tokio::sync::mpsc;
 use wasm_runner::PluginRunner;
 
 mod storage;
@@ -32,10 +33,19 @@ async fn main() -> Result<()> {
     let _ = storage.list_tags().await;
     // storage.install("./dist/plugin.wasm").await?;
 
+    let (itx, irx) = mpsc::channel::<&str>(100);
 
-    let runner = Arc::new(PluginRunner::new("dist/plugin.wasm"));
+    let mut runner = PluginRunner::new("dist/plugin.wasm");
     let res = runner.run_plugin(input);
     println!("{:#?}", &res);
+
+    runner.test(irx).await;
+      
+    // runner.sub_test().await?;
+
+    // itx.send("hello").await;
+
+
 
 
     tokio::signal::ctrl_c().await?;
