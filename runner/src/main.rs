@@ -1,4 +1,8 @@
-use std::{path::{Path, PathBuf}, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+};
 
 use anyhow::Result;
 use clap::Parser;
@@ -11,7 +15,11 @@ mod engine;
 use std::collections::HashMap;
 
 use wash_runtime::{
-    engine::Engine, host::{HostApi, HostBuilder}, plugin::{wasi_config::RuntimeConfig, wasi_http::HttpServer}, types::{Component, LocalResources, Workload, WorkloadStartRequest},
+    engine::Engine,
+    host::{HostApi, HostBuilder},
+    plugin::{wasi_config::RuntimeConfig, wasi_http::HttpServer},
+    types::{Component, LocalResources, Workload, WorkloadStartRequest},
+    wit::WitInterface,
 };
 
 use tracing_subscriber::filter::LevelFilter;
@@ -32,6 +40,8 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     println!("{:#?}", &args);
 
+    let blobs = storage::Storage::new(PathBuf::from_str("data")?).await?;
+
     // Create a Wasmtime engine
     let engine = Engine::builder().build()?;
 
@@ -47,15 +57,20 @@ async fn main() -> Result<()> {
         .build()?;
 
     let host = host.start().await?;
+    let t = host.wit_world();
+    // dangerous as it offers everything. ( tesing )
+    let r = t.exports.clone().into_iter().collect();
+    println!("{:#?}", &r);
 
     // Start a workload
     if let Some(path) = args.input {
         let data = std::fs::read(path)?;
-        let comp = Component{
+        blobs.
+        let comp = Component {
             bytes: data.into(),
             local_resources: LocalResources::default(),
             pool_size: 0,
-            max_invocations: 0
+            max_invocations: 0,
         };
         let req = WorkloadStartRequest {
             workload: Workload {
@@ -64,14 +79,14 @@ async fn main() -> Result<()> {
                 annotations: HashMap::new(),
                 service: None,
                 components: vec![comp],
-                host_interfaces: vec![],
+                host_interfaces: r,
                 volumes: vec![],
             },
         };
-        host.workload_start(req).await?;
+        let wr = host.workload_start(req).await?;
+        println!("{:#?}", &wr);
     }
 
-    
     tokio::signal::ctrl_c().await?;
     Ok(())
 }

@@ -18,6 +18,8 @@ impl Storage {
         let blobs = FsStore::load(full_path).await?;
         Ok(Self { blobs })
     }
+
+    pub async fn
 }
 
 
