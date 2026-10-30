@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use anyhow::Result;
 use clap::Parser;
@@ -19,10 +15,12 @@ use wash_runtime::{
     host::{HostApi, HostBuilder},
     plugin::{wasi_config::RuntimeConfig, wasi_http::HttpServer},
     types::{Component, LocalResources, Workload, WorkloadStartRequest},
-    wit::WitInterface,
 };
 
-use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::{
+    filter::{LevelFilter, Targets},
+    prelude::*,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -33,8 +31,16 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(LevelFilter::DEBUG) // Explicitly set maximum verbosity
+    let mut filter = Targets::new();
+    filter = filter
+        .with_target(env!("CARGO_PKG_NAME"), LevelFilter::DEBUG)
+        .with_target("wash_runtime", LevelFilter::DEBUG);
+
+    let fmt_layer = tracing_subscriber::fmt::layer().compact().without_time();
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
         .init();
 
     let args = Args::parse();
@@ -49,8 +55,8 @@ async fn main() -> Result<()> {
     let http_plugin = HttpServer::new("0.0.0.0:8080".parse()?);
     let runtime_config_plugin = RuntimeConfig::default();
 
-    // Build and start the host
     let host = HostBuilder::new()
+        .with_hostname("localhost")
         .with_engine(engine)
         .with_plugin(Arc::new(http_plugin))?
         .with_plugin(Arc::new(runtime_config_plugin))?
@@ -66,9 +72,13 @@ async fn main() -> Result<()> {
     if let Some(path) = args.input {
         let data = std::fs::read(&path)?;
         blobs.save(path).await?;
+        let mut res = LocalResources::default();
+        res.allowed_hosts = vec!["localhost".to_string()];
+        res.config = HashMap::from([("host".to_string(),"localhost:8080".to_string())]);
+
         let comp = Component {
             bytes: data.into(),
-            local_resources: LocalResources::default(),
+            local_resources: res,
             pool_size: 0,
             max_invocations: 0,
         };
