@@ -34,7 +34,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(LevelFilter::INFO) // Explicitly set maximum verbosity
+        .with_max_level(LevelFilter::DEBUG) // Explicitly set maximum verbosity
         .init();
 
     let args = Args::parse();
@@ -60,12 +60,12 @@ async fn main() -> Result<()> {
     let t = host.wit_world();
     // dangerous as it offers everything. ( tesing )
     let r = t.exports.clone().into_iter().collect();
-    println!("{:#?}", &r);
+    // println!("{:#?}", &r);
 
     // Start a workload
     if let Some(path) = args.input {
-        let data = std::fs::read(path)?;
-        blobs.
+        let data = std::fs::read(&path)?;
+        blobs.save(path).await?;
         let comp = Component {
             bytes: data.into(),
             local_resources: LocalResources::default(),
