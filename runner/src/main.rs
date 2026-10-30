@@ -10,6 +10,8 @@ use wasm_runner::PluginRunner;
 mod storage;
 use storage::Storage;
 
+mod engine;
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

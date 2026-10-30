@@ -14,14 +14,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
     println!("{:#?}",args);
-
+    let target_arch = "wasm32-wasip2";
     let status = Command::new("cargo")
         .args([
             "build",
             "--package",
             "plugin",
             "--target",
-            "wasm32-wasip3",
+           target_arch,
             "--release",
         ])
         .status()
@@ -35,7 +35,7 @@ fn main() {
     // 2. Perform your post-build tasks here
     println!("Doing post-build work (e.g., copying binaries)...");
 
-    let sections = vec!["target","wasm32-unknown-unknown","release","plugin.wasm"];
+    let sections = vec!["target",target_arch,"release","plugin.wasm"];
     let source: PathBuf = sections.iter().collect();
 
     // make the dir

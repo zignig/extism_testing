@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-extism = "1.41.0"
+
 clap = { version = "4.6.7", features = ["derive"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
@@ -13,3 +13,4 @@ iroh-blobs = { version = "0.103.1", default-features = false, features = ["fs-st
 tokio = { version = "1.54.1", features = ["full"] }
 axum = "0.8.9"
 n0-future = "0.3.2"
+wasmtime = "50.0.0"

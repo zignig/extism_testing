@@ -6,7 +6,9 @@
 
 # Installation 
 
-The wasip3 target 
+The wasip3 target  , not using extism ( out of date)
+
+need nightly target 
 
 `
 rustup target add wasm32-wasip3

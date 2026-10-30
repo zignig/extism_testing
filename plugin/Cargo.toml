@@ -7,6 +7,4 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.104"
-extism-pdk = "1.4.1"
-serde = "1.0.229"
+wit-bindgen = { version = "0.63.0", features = ["async"] }
