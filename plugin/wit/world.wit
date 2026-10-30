@@ -1,5 +1,5 @@
-package liminal:plugin;
+package wasmcloud:hello;
 
-world greeter {
-    
+world hello {
+   export wasi:http/incoming-handler@0.2.2;
 }
