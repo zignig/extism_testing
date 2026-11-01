@@ -33,3 +33,5 @@ wasmtime-wasi-http = { version = "48.0.8", default-features = false }
 wasmtime-wasi-tls = { version = "48.0.8", default-features = false }
 
 uuid = { version = "1.29.0", features = ["v4", "v7"] }
+async-trait = "0.1.92"
+hyper = "1.12.0"

@@ -11,7 +11,7 @@ struct Args {
     action: Option<String>,
 }
 
-const PLUGINS: [&str; 1] = ["plugin"];
+const PLUGINS: [&str; 2] = ["plugin","qrcoder"];
 
 fn main() -> Result<()> {
     let args = Args::parse();

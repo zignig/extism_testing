@@ -1,17 +1,20 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
-
 use anyhow::Result;
 use clap::Parser;
+use std::collections::HashMap;
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 mod engine;
 mod storage;
+mod webrouter;
 mod workloads;
 
-
-use std::collections::HashMap;
+use webrouter::EasyRouter;
 
 use wash_runtime::{
-    engine::Engine, host::{HostApi, HostBuilder, http::{DevRouter, Ingress}}, plugin::wasi_config::DynamicConfig, types::{Component, LocalResources, Workload, WorkloadStartRequest},
+    engine::Engine,
+    host::{HostApi, HostBuilder, http::Ingress},
+    plugin::wasi_config::DynamicConfig,
+    types::{Component, LocalResources, Workload, WorkloadStartRequest},
 };
 
 use tracing_subscriber::{
@@ -28,10 +31,11 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Some logging setup
     let mut filter = Targets::new();
     filter = filter
         .with_target(env!("CARGO_PKG_NAME"), LevelFilter::DEBUG)
-        .with_target("wash_runtime", LevelFilter::DEBUG);
+        .with_target("wash_runtime", LevelFilter::INFO);
 
     let fmt_layer = tracing_subscriber::fmt::layer().compact().without_time();
 
@@ -51,7 +55,9 @@ async fn main() -> Result<()> {
     // Create the engine with pooling enabled
     let engine = Engine::builder().with_pooling_allocator(true).build()?;
     // Configure HTTP handler and plugins
-    let http_handler = Ingress::new(DevRouter::default(), "0.0.0.0:8080".parse()?).await?;
+    // let http_handler = Ingress::new(DevRouter::default(), "0.0.0.0:8080".parse()?).await?;
+    let http_handler = Ingress::new(EasyRouter::default(), "0.0.0.0:8080".parse()?).await?;
+
     let config_plugin = DynamicConfig::default();
 
     // Build and start the host
@@ -63,7 +69,6 @@ async fn main() -> Result<()> {
         .build()?;
     let host = host.start().await?;
     println!("Host started: {}", host.friendly_name());
-
 
     let t = host.wit_world();
     // dangerous as it offers everything. ( tesing )
