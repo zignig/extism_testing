@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::{anyhow,Result};
 use iroh_blobs::store::fs::FsStore;
 use n0_future::StreamExt;
+use tracing::error;
 
 #[derive(Debug)]
 pub struct Storage {
@@ -20,25 +21,32 @@ impl Storage {
         Ok(Self { blobs })
     }
 
-    // List all the tags that we have
-    pub async fn list_tag(&self) -> Result<()> { 
-        let mut tags = self.blobs.tags().list().await?;
+    
+    // List all the tags that we have under this prefix
+    pub async fn list_tags(&self,prefix: &str) -> Result<Vec<String>> { 
+        let mut tags = self.blobs.tags().list_prefix(prefix).await?;
+        let mut tag_list = Vec::new();
         while let Some(tag) = tags.next().await {
             let tag = tag?.name;
-            println!("tag = {}", tag);
+            let tag_name = format!("{}", tag);
+            tag_list.push(tag_name);
         }
-        Ok(())
+        Ok(tag_list)
     }
 
     // Given a tag get the bytes
-    pub async fn get_item(&self,name: String) -> Result<&[u8]> {
-        let tag = self.blobs.tags().get(name).await?;
+    pub async fn get_item(&self,name: String) -> Result<Option<&[u8]>> {
+        let tag = self.blobs.tags().get(&name).await?;
+        let name = name.as_str();
         if let Some(tag) = tag { 
-            println!("{:#?}",&tag);
+            error!("{:#?}",&tag);
+            // get the blob
+            return Ok(None);
         }
-        Err(anyhow!("bork"))
+        Err(anyhow!("bork on getting {}",name))
     }
 
+    // Take a blog and put it into storage
     pub async fn save(&self, path: PathBuf) -> Result<()> {
         let abs_path = std::path::absolute(&path)?;
         let t = self.blobs.add_path(&abs_path).await?;

@@ -1,4 +1,5 @@
-// A custom route for this project
+// This is a local router for this project
+// Update trait to include (for Ingress) a request rewriter.
 
 use anyhow::anyhow;
 use wash_runtime::{
@@ -20,7 +21,7 @@ impl Router for EasyRouter {
         resolved_handle: &ResolvedWorkload,
         component_id: &str,
     ) -> anyhow::Result<()> {
-        info!("ATTACH WORKSPACE {:#?} ==> {}",&resolved_handle.namespace(),component_id);
+        info!("ATTACH WORKSPACE {:#?} ==> {}",&resolved_handle,component_id);
         let mut lock = self
             .last_workload_id
             .write()
@@ -45,11 +46,9 @@ impl Router for EasyRouter {
     async fn on_service_http_resolved(
         &self,
         workload_id: &str,
-        _routes: &[IngressRoute],
+        routes: &[IngressRoute],
     ) -> anyhow::Result<()> {
-        // A service-handled workload routes the same way as a component one:
-        // DevRouter sends all requests to the most-recently resolved workload,
-        // so it ignores hostnames and paths alike.
+        info!("{:#?}",routes);
         let mut lock = self
             .last_workload_id
             .write()
@@ -63,10 +62,10 @@ impl Router for EasyRouter {
         _workload_id: &str,
         _request: &hyper::Request<WasiBody>,
         _options: Option<RequestOptions>,
-        allowed_hosts: &[AllowedHost],
+        _allowed_hosts: &[AllowedHost],
     ) -> anyhow::Result<()> {
         // check_allowed_hosts(request, allowed_hosts)
-        Err(anyhow!("borken"))
+        Err(anyhow!("No HTTP access for you!"))
     }
 
     /// Pick a workload ID based on the incoming request
@@ -74,7 +73,7 @@ impl Router for EasyRouter {
         &self,
         req: &hyper::Request<hyper::body::Incoming>,
     ) -> Result<String, RouteError> {
-        info!("{:#?}",req.uri());
+        info!("{:#?}",req);
         let lock = self
             .last_workload_id
             .try_read()
