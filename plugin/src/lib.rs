@@ -14,7 +14,7 @@ async fn main(req: Request<Body>) -> Result<Response<Body>, wstd::http::Error> {
         .map(|authority| authority.as_str())
         .unwrap_or("<none>");
     let body = format!(
-        "hello from the callee! (path: {}, host: {})\n",
+        "This is a working one from (path: {}, host: {})\n",
         req.uri().path(),
         host
     );

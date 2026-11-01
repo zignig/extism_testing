@@ -3,18 +3,15 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use anyhow::Result;
 use clap::Parser;
 
-mod storage;
-// use storage::Storage;
-
 mod engine;
+mod storage;
+mod workloads;
+
 
 use std::collections::HashMap;
 
 use wash_runtime::{
-    engine::Engine,
-    host::{HostApi, HostBuilder},
-    plugin::{wasi_config::RuntimeConfig, wasi_http::HttpServer},
-    types::{Component, LocalResources, Workload, WorkloadStartRequest},
+    engine::Engine, host::{HostApi, HostBuilder, http::{DevRouter, Ingress}}, plugin::wasi_config::DynamicConfig, types::{Component, LocalResources, Workload, WorkloadStartRequest},
 };
 
 use tracing_subscriber::{
@@ -48,21 +45,26 @@ async fn main() -> Result<()> {
 
     let blobs = storage::Storage::new(PathBuf::from_str("data")?).await?;
 
-    // Create a Wasmtime engine
-    let engine = Engine::builder().build()?;
+    // print out the exiting tags
+    blobs.list_tag().await?;
 
-    // Configure plugins
-    let http_plugin = HttpServer::new("0.0.0.0:8080".parse()?);
-    let runtime_config_plugin = RuntimeConfig::default();
+    // Create the engine with pooling enabled
+    let engine = Engine::builder().with_pooling_allocator(true).build()?;
+    // Configure HTTP handler and plugins
+    let http_handler = Ingress::new(DevRouter::default(), "0.0.0.0:8080".parse()?).await?;
+    let config_plugin = DynamicConfig::default();
 
+    // Build and start the host
     let host = HostBuilder::new()
-        .with_hostname("localhost")
         .with_engine(engine)
-        .with_plugin(Arc::new(http_plugin))?
-        .with_plugin(Arc::new(runtime_config_plugin))?
+        .with_friendly_name("my-custom-host")
+        .with_http_handler(Arc::new(http_handler))
+        .with_plugin(Arc::new(config_plugin))?
         .build()?;
-
     let host = host.start().await?;
+    println!("Host started: {}", host.friendly_name());
+
+
     let t = host.wit_world();
     // dangerous as it offers everything. ( tesing )
     let r = t.exports.clone().into_iter().collect();
@@ -73,16 +75,20 @@ async fn main() -> Result<()> {
         let data = std::fs::read(&path)?;
         blobs.save(path).await?;
         let mut res = LocalResources::default();
-        res.allowed_hosts = vec!["localhost".to_string()];
-        res.config = HashMap::from([("host".to_string(),"localhost:8080".to_string())]);
+
+        res.config = HashMap::from([("host".to_string(), "localhost:8080".to_string())]);
 
         let comp = Component {
+            name: "bob".to_string(),
             bytes: data.into(),
+            digest: None,
             local_resources: res,
             pool_size: 0,
-            max_invocations: 0,
+            ..Default::default()
         };
+
         let req = WorkloadStartRequest {
+            workload_id: uuid::Uuid::new_v4().to_string(),
             workload: Workload {
                 namespace: "test".to_string(),
                 name: "test-workload".to_string(),
@@ -95,6 +101,8 @@ async fn main() -> Result<()> {
         };
         let wr = host.workload_start(req).await?;
         println!("{:#?}", &wr);
+    } else {
+        println!("Load and run a default one.");
     }
 
     tokio::signal::ctrl_c().await?;
