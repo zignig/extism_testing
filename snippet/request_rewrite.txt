@@ -1,0 +1,19 @@
+use http::{Uri, Request, Response};
+use hyper::body::Body;
+
+fn rewrite_path<B>(req: &mut Request<B>, new_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let uri = req.uri();
+    
+    // Build a new path_and_query string
+    let path_and_query = match uri.query() {
+        Some(query) => format!("{}?{}", new_path, query),
+        None => new_path.to_string(),
+    };
+
+    // Parse/build the new URI while keeping scheme and authority if present
+    let mut parts = uri.clone().into_parts();
+    parts.path_and_query = Some(path_and_query.parse()?);
+    
+    *req.uri_mut() = Uri::from_parts(parts)?;
+    Ok(())
+}

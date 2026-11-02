@@ -1,16 +1,21 @@
-use wstd::http::error::Context;
-use wstd::http::{Body, Request, Response, StatusCode};
-
-#[wstd::http_server]
-async fn main(req: Request<Body>) -> Result<Response<Body>, wstd::http::Error> {
-    let host = req
-        .uri()
-        .authority()
-        .map(|authority| authority.as_str())
-        .unwrap_or("<none>");
-    let body = format!("<H1>HELLO</H1>" );
-    Response::builder()
-        .status(StatusCode::OK)
-        .body(Body::from(body))
-        .context("building response")
+mod bindings {
+    wit_bindgen::generate!({
+        world: "service",
+        generate_all,
+    });
 }
+
+use crate::bindings::export;
+use crate::bindings::exports::liminal::controller::todo::Guest;
+
+pub struct Test;
+
+impl Guest for Test {
+    async fn fetch(host: String) -> String {
+        println!("{}",host);
+        host
+    }
+
+}
+
+export!(Test with_types_in bindings);

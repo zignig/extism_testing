@@ -1,5 +1,5 @@
 package liminal:service;
 
-world service{
-   export wasi:http/incoming-handler@0.2.2;
+world service {
+   export liminal:controller/todo@0.3.0;
 }

@@ -1,0 +1,9 @@
+package liminal:controller@0.3.0;
+
+interface todo {
+    fetch: async func(host: string) -> string;
+}
+
+world control {
+  export todo;
+}

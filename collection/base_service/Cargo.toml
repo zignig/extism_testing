@@ -7,4 +7,5 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-wstd = "0.6.8"
+wit-bindgen = { version = "0.63.0", features = ["inter-task-wakeup"] }
+

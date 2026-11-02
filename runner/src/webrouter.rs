@@ -4,9 +4,8 @@
 use std::collections::HashMap;
 
 use anyhow::anyhow;
-use axum::http::uri::PathAndQuery;
 use hyper::Uri;
-use tracing::{error, warn};
+use tracing::warn;
 use wash_runtime::{
     engine::workload::ResolvedWorkload,
     host::{
@@ -83,9 +82,7 @@ impl Router for EasyRouter {
         let mut parts = req.uri().clone().into_parts();
         let url_path = req.uri().path();
         // Grab the lock
-        let map_lock = self
-            .routes
-            .try_read().unwrap();
+        let map_lock = self.routes.try_read().unwrap();
 
         let new_path = match map_lock
             .iter()
@@ -94,7 +91,7 @@ impl Router for EasyRouter {
             Some((path, _)) => url_path.trim_start_matches(path),
             None => url_path,
         };
-        
+
         parts.path_and_query = Some(new_path.parse().unwrap());
 
         *req.uri_mut() = Uri::from_parts(parts).unwrap();

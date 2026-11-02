@@ -18,6 +18,7 @@ pub struct Dispatcher {
 
 impl Dispatcher {
     pub fn new(world: WitWorld) -> Self {
+        // println!("{:#?}",&world);
         Dispatcher {
             world: world,
         }
