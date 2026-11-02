@@ -1,3 +1,9 @@
 [workspace]
-members = ["runner","plugin","xtask","collection/qrcoder"]
+members = [
+    "runner",
+    "plugin",
+    "xtask",
+    "collection/qrcoder",
+    "collection/base_service",
+]
 resolver = "3"

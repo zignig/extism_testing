@@ -1,0 +1,5 @@
+version: 2.11.0
+
+build:
+  command: cargo build --target wasm32-wasip2 --release --locked
+  component_path: target/wasm32-wasip2/release/serv.wasm

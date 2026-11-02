@@ -5,16 +5,21 @@ use std::collections::HashMap;
 use anyhow::Result;
 use wash_runtime::{
     types::{Component, LocalResources, Workload, WorkloadStartRequest},
+    wit::WitWorld,
 };
 
 // This is more making stuff
 pub struct Dispatcher {
     name: String,
+    world: WitWorld,
 }
 
 impl Dispatcher {
-    pub fn new() -> Self {
-        Dispatcher { name: "base".to_string() }
+    pub fn new(world: WitWorld) -> Self {
+        Dispatcher {
+            name: "base".to_string(),
+            world: world,
+        }
     }
 
     // given a single wasm , Drop it into the testing zone

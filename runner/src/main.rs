@@ -8,12 +8,11 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 mod engine;
 mod storage;
+mod trace;
 mod webrouter;
 mod workloads;
-mod trace;
-  
-use webrouter::EasyRouter;
 
+use webrouter::EasyRouter;
 
 // The wash stuff
 use wash_runtime::{
@@ -33,6 +32,7 @@ use crate::workloads::Dispatcher;
 struct Args {
     /// Path to wasm
     input: Option<PathBuf>,
+    is_service: Option<bool>,
 }
 
 #[tokio::main]
@@ -58,29 +58,25 @@ async fn main() -> Result<()> {
         .with_http_handler(Arc::new(http_handler))
         .with_plugin(Arc::new(config_plugin))?
         .build()?;
-    
+
     // Go
     let host = host.start().await?;
     println!("Host started: {}", host.friendly_name());
 
-    // check the wasi interfaces are in blobs
-    // check to see howmany there are , then insert the 
-    // wasi interfaces into blob tags
-    let t = host.wit_world();
-    // dangerous as it offers everything. ( tesing )
-    let r = t.exports.clone().into_iter().collect();
-
     // Load the default items
     let item_list = blobs.list_tags("preboot:").await?;
-    for name in item_list.iter() { 
-        info!("load me {}",&name);
+    for name in item_list.iter() {
+        info!("load me {}", &name);
         // if let Some(item) = blobs.get_item(name.clone()).await? {
         //     info!("have the blob {}",name);
         // }
     }
 
-    let dispatcher = Dispatcher::new();
+    let ww = host.wit_world();
+    // dangerous as it offers everything. ( tesing )
+    let r = ww.exports.clone().into_iter().collect();
 
+    let dispatcher = Dispatcher::new(ww);
 
     // Start a workload
     if let Some(path) = args.input {
@@ -98,7 +94,7 @@ async fn main() -> Result<()> {
             pool_size: 0,
             ..Default::default()
         };
-        
+
         let req = WorkloadStartRequest {
             workload_id: uuid::Uuid::new_v4().to_string(),
             workload: Workload {
