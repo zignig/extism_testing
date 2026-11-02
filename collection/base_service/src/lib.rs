@@ -1,7 +1,6 @@
-mod bindings {
+pub mod bindings {
     wit_bindgen::generate!({
         world: "service",
-        generate_all,
     });
 }
 
@@ -12,10 +11,9 @@ pub struct Test;
 
 impl Guest for Test {
     async fn fetch(host: String) -> String {
-        println!("{}",host);
+        println!("{}", host);
         host
     }
-
 }
 
 export!(Test with_types_in bindings);
