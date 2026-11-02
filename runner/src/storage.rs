@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use iroh_blobs::store::fs::FsStore;
 use n0_future::StreamExt;
-use tracing::error;
+use bytes::Bytes; 
 
 #[derive(Debug)]
 pub struct Storage {
@@ -26,20 +26,19 @@ impl Storage {
         let mut tag_list = Vec::new();
         while let Some(tag) = tags.next().await {
             let tag = tag?.name;
-            let tag_name = format!("{}", tag);
+            let tag_name = String::from_utf8_lossy(&tag.0).into_owned();
             tag_list.push(tag_name);
         }
         Ok(tag_list)
     }
 
     // Given a tag get the bytes
-    pub async fn get_item(&self, name: String) -> Result<Option<&[u8]>> {
+    pub async fn get_item(&self, name: String) -> Result<Option<Bytes>> {
         let tag = self.blobs.tags().get(&name).await?;
         let name = name.as_str();
         if let Some(tag) = tag {
-            error!("{:#?}", &tag);
-            // get the blob
-            return Ok(None);
+            let data =  self.blobs.get_bytes(tag.hash).await?;
+            return Ok(Some(data));
         }
         Err(anyhow!("bork on getting {}", name))
     }

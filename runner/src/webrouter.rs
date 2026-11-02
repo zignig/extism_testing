@@ -1,17 +1,26 @@
 // This is a local router for this project
 // Update trait to include (for Ingress) a request rewriter.
 
+use std::collections::HashMap;
+
 use anyhow::anyhow;
+use axum::http::uri::PathAndQuery;
+use hyper::Uri;
+use tracing::{error, warn};
 use wash_runtime::{
-    engine::workload::ResolvedWorkload, host::{allowed_hosts::AllowedHost, http::{IngressRoute, RouteError, Router}},
+    engine::workload::ResolvedWorkload,
+    host::{
+        allowed_hosts::AllowedHost,
+        http::{IngressRoute, RouteError, Router},
+    },
 };
 use wasmtime_wasi_http::{RequestOptions, WasiBody};
-use tracing::info;
 
 /// Development router that routes all requests to the last resolved workload
 #[derive(Default)]
 pub struct EasyRouter {
-    last_workload_id: std::sync::RwLock<Option<String>>,
+    //routes:  routing map , per namespace , name
+    routes: std::sync::RwLock<HashMap<String, String>>,
 }
 
 #[async_trait::async_trait]
@@ -21,39 +30,35 @@ impl Router for EasyRouter {
         resolved_handle: &ResolvedWorkload,
         component_id: &str,
     ) -> anyhow::Result<()> {
-        info!("ATTACH WORKSPACE {:#?} ==> {}",&resolved_handle,component_id);
+        warn!(
+            "ATTACH WORKSPACE {:#?} ==> {}",
+            &resolved_handle.name(),
+            component_id
+        );
+        let item_name = format!("/{}", &resolved_handle.name());
         let mut lock = self
-            .last_workload_id
+            .routes
             .write()
-            .map_err(|e| anyhow::anyhow!("DevRouter write lock poisoned: {e}"))?;
-        lock.replace(resolved_handle.id().to_string());
+            .map_err(|e| anyhow::anyhow!("EasyRouter write lock poisoned: {e}"))?;
+        lock.insert(item_name.to_string(), resolved_handle.id().to_string());
         Ok(())
     }
 
-    async fn on_workload_unbind(&self, workload_id: &str) -> anyhow::Result<()> {
-        let mut lock = self
-            .last_workload_id
+    async fn on_workload_unbind(&self, _workload_id: &str) -> anyhow::Result<()> {
+        let mut _ock = self
+            .routes
             .write()
-            .map_err(|e| anyhow::anyhow!("DevRouter write lock poisoned: {e}"))?;
-        if let Some(current_id) = &*lock
-            && current_id == workload_id
-        {
-            let _ = lock.take();
-        }
+            .map_err(|e| anyhow::anyhow!("EasyRouter write lock poisoned: {e}"))?;
+        // TODO remove the route lock
         Ok(())
     }
 
     async fn on_service_http_resolved(
         &self,
-        workload_id: &str,
-        routes: &[IngressRoute],
+        _workload_id: &str,
+        _routes: &[IngressRoute],
     ) -> anyhow::Result<()> {
-        info!("{:#?}",routes);
-        let mut lock = self
-            .last_workload_id
-            .write()
-            .map_err(|e| anyhow::anyhow!("DevRouter write lock poisoned: {e}"))?;
-        lock.replace(workload_id.to_string());
+        // need to add these in too.
         Ok(())
     }
 
@@ -68,20 +73,53 @@ impl Router for EasyRouter {
         Err(anyhow!("No HTTP access for you!"))
     }
 
+    // Do some rewriting magic on the web request.
+    // this is ugly and filled with upwraps.
+
+    fn rewrite_incoming_request(
+        &self,
+        mut req: hyper::Request<hyper::body::Incoming>,
+    ) -> hyper::Request<hyper::body::Incoming> {
+        let mut parts = req.uri().clone().into_parts();
+        let url_path = req.uri().path();
+        // Grab the lock
+        let map_lock = self
+            .routes
+            .try_read().unwrap();
+
+        let new_path = match map_lock
+            .iter()
+            .find(|(key, _)| url_path.starts_with(key.as_str()))
+        {
+            Some((path, _)) => url_path.trim_start_matches(path),
+            None => url_path,
+        };
+        
+        parts.path_and_query = Some(new_path.parse().unwrap());
+
+        *req.uri_mut() = Uri::from_parts(parts).unwrap();
+
+        req
+    }
+
     /// Pick a workload ID based on the incoming request
     fn route_incoming_request(
         &self,
         req: &hyper::Request<hyper::body::Incoming>,
     ) -> Result<String, RouteError> {
-        info!("{:#?}",req);
-        let lock = self
-            .last_workload_id
+        // println!("{:#?}", req.uri().path());
+        let map_lock = self
+            .routes
             .try_read()
             .map_err(|_| RouteError::Unavailable)?;
-        match &*lock {
-            Some(id) => Ok(id.clone()),
-            // DevRouter is host-agnostic; signal "nothing registered" via an
-            // empty host string (see RouteError::NoWorkloadForHost docs).
+        // println!("the map {:#?}", &map_lock);
+        let url_path = req.uri().path();
+        let wl = map_lock
+            .iter()
+            .find(|(key, _)| url_path.starts_with(key.as_str()));
+        // println!("{:#?}", &wl);
+        match wl {
+            Some((_, workload_id)) => Ok(workload_id.clone()),
             None => Err(RouteError::NoWorkloadForHost(String::new())),
         }
     }

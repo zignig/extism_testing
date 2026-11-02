@@ -2,8 +2,6 @@
 
 use anyhow::Result;
 use clap::Parser;
-// use wash_runtime::types::Service;
-use std::collections::HashMap;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 mod engine;
@@ -19,7 +17,6 @@ use wash_runtime::{
     engine::Engine,
     host::{HostApi, HostBuilder, http::Ingress},
     plugin::wasi_config::DynamicConfig,
-    types::{Component, LocalResources, Workload, WorkloadStartRequest},
 };
 
 // Local tracing
@@ -63,54 +60,29 @@ async fn main() -> Result<()> {
     let host = host.start().await?;
     println!("Host started: {}", host.friendly_name());
 
-    // Load the default items
-    let item_list = blobs.list_tags("preboot:").await?;
-    for name in item_list.iter() {
-        info!("load me {}", &name);
-        // if let Some(item) = blobs.get_item(name.clone()).await? {
-        //     info!("have the blob {}",name);
-        // }
-    }
-
+    // Make the dispatcher
     let ww = host.wit_world();
-    // dangerous as it offers everything. ( tesing )
-    let r = ww.exports.clone().into_iter().collect();
-
     let dispatcher = Dispatcher::new(ww);
 
-    // Start a workload
+    // Load the default items
+    let item_list = blobs.list_tags("preboot::").await?;
+    info!("{:#?}",&item_list);
+    for name in item_list.iter() {
+        // info!("load me {}", &name);
+        if let Some(data) = blobs.get_item(name.clone()).await? {
+            // info!("have the blob {}",name);
+            // Fix the name for the router;
+            let short_name = name.trim_start_matches("preboot::").trim_end_matches(".wasm");
+            let wlr = dispatcher.simple(short_name, data)?;
+            println!("{} = {:#?}",name,wlr.workload_id);
+            let _wr = host.workload_start(wlr).await?;
+            // info!("{:#?}",wr);
+        }
+    }
+
+    // Put blob into storage
     if let Some(path) = args.input {
-        let data = std::fs::read(&path)?;
         blobs.save(path).await?;
-        let mut res = LocalResources::default();
-
-        res.config = HashMap::from([("host".to_string(), "localhost:8080".to_string())]);
-
-        let comp = Component {
-            name: "bob".to_string(),
-            bytes: data.into(),
-            digest: None,
-            local_resources: res,
-            pool_size: 0,
-            ..Default::default()
-        };
-
-        let req = WorkloadStartRequest {
-            workload_id: uuid::Uuid::new_v4().to_string(),
-            workload: Workload {
-                namespace: "test".to_string(),
-                name: "test-workload".to_string(),
-                annotations: HashMap::new(),
-                service: None,
-                components: vec![comp],
-                host_interfaces: r,
-                volumes: vec![],
-            },
-        };
-        let wr = host.workload_start(req).await?;
-        println!("{:#?}", &wr);
-    } else {
-        println!("Load and run a default one.");
     }
 
     tokio::signal::ctrl_c().await?;

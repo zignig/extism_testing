@@ -10,7 +10,7 @@ pub fn start_logging() {
         .with_target(env!("CARGO_PKG_NAME"), LevelFilter::DEBUG)
         .with_target("wash_runtime", LevelFilter::INFO);
 
-    let fmt_layer = tracing_subscriber::fmt::layer().compact().without_time();
+    let fmt_layer = tracing_subscriber::fmt::layer().compact();//.without_time();
 
     tracing_subscriber::registry()
         .with(filter)
