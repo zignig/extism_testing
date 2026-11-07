@@ -13,6 +13,7 @@ mod workloads;
 
 use custom_plugin::CustomPlugin;
 use webrouter::EasyRouter;
+use storage::WasmLoader;
 
 // The wash stuff
 use wash_runtime::{
@@ -48,6 +49,7 @@ async fn main() -> Result<()> {
     // Put blob into storage if there is one on the command line
     // testing only
     if let Some(path) = args.input {
+        
         blobs.save(path).await?;
     }
 
@@ -80,6 +82,8 @@ async fn main() -> Result<()> {
     for name in item_list.iter() {
         // info!("load me {}", &name);
         if let Some(data) = blobs.get_item(name.clone()).await? {
+            let _  = WasmLoader::new(name,data.clone()).await?;
+            
             // info!("have the blob {}",name);
             // Fix the name for the router;
             let short_name = name

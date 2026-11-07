@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use iroh_blobs::store::fs::FsStore;
 use n0_future::StreamExt;
-use bytes::Bytes; 
+use bytes::Bytes;
+use serde::{Deserialize, Serialize}; 
 
 #[derive(Debug)]
 pub struct Storage {
@@ -57,6 +58,48 @@ impl Storage {
         self.blobs.tags().set(ps, t.hash_and_format()).await?;
         // Delete the auto tag
         self.blobs.tags().delete(t.name).await?;
+        Ok(())
+    }
+}
+
+
+// Some help structs
+#[derive(Debug,Serialize,Deserialize)]
+pub struct IrohWorkload { 
+    namespace: String,
+    service: SignedPair,
+    components: Vec<SignedPair>
+
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct SignedPair { 
+    name: String,
+    address: iroh_blobs::Hash,
+    // signature: 
+}
+
+impl IrohWorkload { 
+
+}
+
+
+
+/// Ingest a new wasm
+/// 
+use wit_component::decode  ; 
+use tracing::info;
+pub struct WasmLoader;
+
+impl WasmLoader { 
+    pub async fn new(name: &String , data: Bytes) -> Result<()> { 
+        let info = decode(&data)?;
+        let resolve = match info {
+            wit_component::DecodedWasm::WitPackage(resolve, _id) => resolve,
+            wit_component::DecodedWasm::Component(resolve, _id) => resolve,
+        };
+        info!("{}",name);
+        println!("{:#?}",resolve));
         Ok(())
     }
 }

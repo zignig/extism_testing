@@ -3,34 +3,38 @@ use std::collections::HashMap;
 // Create and dispatch workloads
 // Need to include rcan and storage tricks
 
-use anyhow::Result;
+use crate::storage::IrohWorkload;
+use anyhow::{Result, anyhow};
+use bytes::Bytes;
 use wash_runtime::{
     types::{Component, LocalResources, Workload, WorkloadStartRequest},
     wit::WitWorld,
 };
-use bytes::Bytes;
-
 
 // This is more making stuff
 pub struct Dispatcher {
     world: WitWorld,
 }
 
+// This needs to be fully rcanned.
 impl Dispatcher {
     pub fn new(world: WitWorld) -> Self {
         // println!("{:#?}",&world);
-        Dispatcher {
-            world: world,
-        }
+        Dispatcher { world: world }
+    }
+
+    // given an encoded workload load run and check
+    pub fn from_iroh(&self, workload: IrohWorkload) -> Result<WorkloadStartRequest> {
+        Err(anyhow!("Iroh load fail!!"))
     }
 
     // given a single wasm , Drop it into the testing zone
-    pub fn simple(&self , name: &str, data: Bytes ) -> Result<WorkloadStartRequest> {
+    pub fn simple(&self, name: &str, data: Bytes) -> Result<WorkloadStartRequest> {
         // just offer up all of the hosts available interface
         let available = self.world.exports.clone().into_iter().collect();
 
         let res = LocalResources::default();
-        
+
         // Load the simple component
         let comp = Component {
             name: name.to_string(),

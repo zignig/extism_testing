@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "runner",
-    "plugin",
     "xtask",
+    "collection/plugin",
     "collection/qrcoder",
     "collection/base_service",
 ]
